@@ -60,6 +60,11 @@ dt { font-weight: 600; }
 dd { margin: 0 0 0.8rem 0; color: var(--muted); }
 .principles > div, .status-legend > div { margin-bottom: 0.8rem; }
 .status-legend { display: grid; gap: 0.5rem; }
+.product-list { display: grid; gap: 1rem; }
+.product-list article { border: 1px solid var(--rule); padding: 1.25rem; }
+.product-list h3 { margin: 0 0 0.35rem; }
+.product-list article p { margin-bottom: 0.7rem; }
+.status { color: var(--accent); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 
 .site-footer { padding-top: 2rem; padding-bottom: 2rem; color: var(--muted); font-size: 0.9rem; }
 
