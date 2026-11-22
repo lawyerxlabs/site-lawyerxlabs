@@ -1,0 +1,56 @@
+services:
+  web:
+    build:
+      context: .
+      args:
+        VITE_SURFACE: "${VITE_SURFACE:-lawyerlab}"
+        VITE_TURNSTILE_SITEKEY: "${VITE_TURNSTILE_SITEKEY:?VITE_TURNSTILE_SITEKEY is required}"
+    ports:
+      - "127.0.0.1:7200:7200"
+    networks:
+      - default
+      # Created by scripts/bootstrap-networks.sh before either stack starts.
+      - tool_parse_gateway
+    restart: unless-stopped
+  signal-web:
+    image: site-lawyerlab-signal-web
+    build:
+      context: .
+      args:
+        VITE_SURFACE: signal-lawyers
+        VITE_TURNSTILE_SITEKEY: "${SIGNAL_TURNSTILE_SITEKEY:?SIGNAL_TURNSTILE_SITEKEY is required}"
+        NGINX_PORT: "7210"
+    ports:
+      - "127.0.0.1:7210:7210"
+    networks:
+      - default
+      - tool_parse_gateway
+    restart: unless-stopped
+  auth:
+    build:
+      context: ./auth-server
+    networks:
+      - lawyerlab_auth_bridge
+      - default
+    environment:
+      AUTH_HOST: "0.0.0.0"
+      AUTH_BRIDGE_SECRET: "${AUTH_BRIDGE_SECRET:?AUTH_BRIDGE_SECRET is required}"
+      AUTH_ISSUER: "${AUTH_ISSUER:?AUTH_ISSUER is required}"
+      AUTH_CLIENT_ID: "${AUTH_CLIENT_ID:?AUTH_CLIENT_ID is required}"
+      AUTH_CLIENT_SECRET: "${AUTH_CLIENT_SECRET:?AUTH_CLIENT_SECRET is required}"
+      AUTH_SESSION_SECRET: "${AUTH_SESSION_SECRET:?AUTH_SESSION_SECRET is required}"
+      AUTH_ORIGINS: "${AUTH_ORIGINS:?AUTH_ORIGINS is required}"
+      AUTH_REQUIRED_ROLES: "${AUTH_REQUIRED_ROLES:-}"
+      AUTH_PORT: "7300"
+    restart: unless-stopped
+
+networks:
+  # Both external: created by scripts/bootstrap-networks.sh (run before either stack).
+  # lawyerlab_auth_bridge is internal (no egress, no host publish); shared only by auth and the Tool Parse gateway.
+  lawyerlab_auth_bridge:
+    external: true
+    name: lawyerlab_auth_bridge
+  # Owned by tool-parse (compose.dev.yml). Web nginx reaches the gateway at tool-parse-gateway.
+  tool_parse_gateway:
+    external: true
+    name: tool_parse_gateway

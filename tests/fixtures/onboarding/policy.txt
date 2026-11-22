@@ -1,0 +1,5 @@
+Synthetic fixture — Example policy
+
+Policy: Sample Workplace Conduct
+Employees complete the sample training within thirty days of start.
+Equipment is issued by the sample office manager.

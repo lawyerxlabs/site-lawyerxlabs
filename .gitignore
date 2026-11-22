@@ -1,0 +1,28 @@
+node_modules/
+dist/
+.vite/
+.vitest/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+
+# Local/test outputs
+.tmp/
+test-artifacts/
+playwright-report/
+test-results/
+
+# Never commit uploaded or generated documents
+*.pdf
+*.docx
+!public/tests/fixtures/synthetic-intake.docx
+
+# Waitlist server local runtime
+__pycache__/
+*.sqlite3*
+
+# Local diagnostic scratch space
+.scratch-*/

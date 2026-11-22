@@ -1,15 +1,24 @@
-# site-lawyerxlabs
+# site-lawyerlab
 
-Public LawyerLabs homepage for `https://lawyerxlabs.ca/`. Static HTML/CSS, no build step.
+LawLabs product shell for bounded legal document workflows.
 
-Copy source: SecondBrain `internal/strategy/lawyerlabs/lawyerlabs-homepage-copy.md` (v1, company and category only). The site adds the approved AI/MCP line and educator/organization audience; these need recording as a v2 copy in SecondBrain before publication.
+Deployment profiles and build requirements: [docs/DEPLOYMENT-PROFILES.md](docs/DEPLOYMENT-PROFILES.md).
 
-Products section lists status labels only. No product cards are published yet.
+## Status
 
-## Preview
+Initial scaffold. The product will call `tool-parse` over its HTTP API; it will not embed the processing service.
 
-    python3 -m http.server 8080
+## Turnstile deployment
 
-## Check
+Docker image builds require `VITE_TURNSTILE_SITEKEY`, the public Cloudflare sitekey for the frontend hostname. Export it when running `docker compose up -d --build`; the value is compiled into browser assets. The server-side Turnstile secret belongs only in Tool Parse's file-backed gateway secret and must never be passed to this frontend build.
 
-    python3 -c "import html.parser,sys; html.parser.HTMLParser().feed(open('index.html').read()); print('parsed')"
+## Startup order (shared networks)
+
+`compose.yml` and tool-parse's `compose.dev.yml` both declare `tool_parse_gateway` and `lawyerlab_auth_bridge` as `external`. Neither stack creates them, so run this once per host before starting either stack, in either order:
+
+```bash
+scripts/bootstrap-networks.sh   # idempotent; creates both networks if missing
+docker compose up -d --force-recreate
+```
+
+`lawyerlab_auth_bridge` is created `--internal` (no egress). Do not create these networks by hand with different options.

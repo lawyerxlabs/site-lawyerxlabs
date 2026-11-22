@@ -1,0 +1,96 @@
+/* LawyerLab product tokens
+   Source of truth for the design system. docs/DESIGN.md documents these;
+   component code references them — never raw values. */
+
+:root {
+  /* ── Palette ── */
+  --ll-primary: #1a3a5c;
+  --ll-primary-pressed: #142e4a;
+  --ll-accent: #0e5a96;
+
+  /* Ink ramp: headings → body → secondary → disabled/meta */
+  --ll-ink:   #1c2833;
+  --ll-ink-2: #394653;
+  --ll-ink-3: #5d6673;
+  --ll-ink-4: #9aa0a8;
+  --ll-muted: var(--ll-ink-3); /* back-compat alias */
+
+  /* Surface ramp: page → cards → inner panels */
+  --ll-page:      #f9fafd;
+  --ll-surface:   #f4f6f8;
+  --ll-surface-2: #eaedf1;
+  --ll-surface-3: #f1f4f7;
+
+  /* Borders */
+  --ll-rule:     #d6c8a8; /* warm document border */
+  --ll-hairline: #e2ddd1; /* structural hairlines */
+  --ll-border:   var(--ll-rule); /* back-compat alias */
+
+  --ll-focus-ring: #0e5a96;
+  --ll-danger: #a43d35;
+  --ll-danger-pressed: #7f312b;
+  --ll-info-surface: #e8f0f7;
+  --ll-warn-surface: #fefce8;
+  --ll-warn-border: #fff085;
+  --ll-warn-ink: #7a4900;
+  --ll-ok-surface: #f0fdf4;
+  --ll-ok-border: #b9e4c6;
+  --ll-ok-ink: #14532d;
+  --ll-primary-shadow: rgba(26, 58, 92, .18);
+
+  /* shadcn-compatible semantic layer; --ll-* remains source of truth */
+  --background: #fff;
+  --foreground: var(--ll-ink);
+  --card: #fff;
+  --card-foreground: var(--ll-ink);
+  --popover: #fff;
+  --popover-foreground: var(--ll-ink);
+  --primary: var(--ll-primary);
+  --primary-foreground: #fff;
+  --secondary: var(--ll-surface);
+  --secondary-foreground: var(--ll-ink);
+  --muted: var(--ll-surface);
+  --muted-foreground: var(--ll-muted);
+  --accent: var(--ll-accent);
+  --accent-foreground: #fff;
+  --destructive: var(--ll-danger);
+  --destructive-foreground: #fff;
+  --border: var(--ll-hairline);
+  --input: var(--ll-hairline);
+  --ring: var(--ll-accent);
+  --radius: .625rem;
+
+  /* ── Typography ── */
+  --ll-font-sans: "Geist Variable", "Geist", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ll-font-serif: "Newsreader Variable", "Newsreader", Georgia, "Times New Roman", serif;
+  --ll-font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Back-compat alias — migrate callers to --ll-font-sans */
+  --ll-font: var(--ll-font-sans);
+
+  /* ── Type scale (fluid) ── */
+  --ll-step--1: 0.75rem;                                 /* 12px – status pills, mobile context */
+  --ll-step-0: 0.8125rem;                                /* 13px – eyebrows, badges, meta */
+  --ll-step-1: 0.875rem;                                 /* 14px – supporting, labels */
+  --ll-step-2: 1rem;                                     /* 16px – body */
+  --ll-step-3: 1.0625rem;                                /* 17px – large body, lede */
+  --ll-step-4: clamp(1.25rem, 1.1rem + 0.5vw, 1.5rem);  /* component heading, h3 */
+  --ll-step-5: clamp(1.5rem, 1.3rem + 0.7vw, 1.75rem);  /* h2 */
+  --ll-step-6: clamp(2.25rem, 1.9rem + 1.5vw, 3.25rem); /* h1 customer title */
+
+  /* ── Type features ── */
+  --ll-tnum: "tnum" 1;
+
+  /* ── Motion ── */
+  --ll-dur-fast: .12s;
+  --ll-dur-base: .24s;
+  --ll-ease: cubic-bezier(.25, 1, .5, 1);
+
+  /* ── Layout ── */
+  --ll-width-content: 880px;
+  --ll-width-app: 800px;
+  --ll-width-wide: 1120px;
+  --ll-width-narrow: 680px;
+  --ll-gutter: 20px;
+  --ll-gutter-mobile: 14px;
+}

@@ -1,0 +1,19 @@
+{
+  "revision": "mvp-2026-10-19",
+  "health": {"status": "ok"},
+  "job": {
+    "job_id": "synthetic-job-id",
+    "status": "queued",
+    "created_at": "2026-10-19T00:00:00Z",
+    "started_at": null,
+    "completed_at": null,
+    "expires_at": "2026-10-19T01:00:00Z",
+    "max_bytes": 10485760,
+    "max_pages": 20
+  },
+  "errors": {
+    "not_completed": {"error": {"code": "not_completed", "message": "job is not completed"}},
+    "too_large": {"error": {"code": "too_large", "message": "file exceeds size limit"}},
+    "rate_limited": {"error": {"code": "queue_full", "message": "queue is full"}, "retry_after": "10"}
+  }
+}

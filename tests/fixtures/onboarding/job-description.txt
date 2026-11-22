@@ -1,0 +1,5 @@
+Synthetic fixture — Example role
+
+Position: Sample Operations Coordinator
+Responsibilities: Coordinate schedules, maintain records, and support the sample team.
+Requirements: Clear communication and organization.

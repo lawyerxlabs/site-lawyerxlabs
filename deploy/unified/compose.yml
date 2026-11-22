@@ -1,0 +1,373 @@
+# LawyerLab + Tool Parse — one Compose project. Launch via ./up.sh (validates env + secret files first).
+# Build sources: canonical site-lawyerlab main worktree and sibling tool-parse.
+name: app-lawyerlab
+
+services:
+  # LawyerLab SPA + nginx. Same-origin entry: /v1/* -> tool-parse-gateway, /api/auth/* -> auth.
+  web:
+    build:
+      context: ../..
+      args:
+        VITE_SURFACE: "${VITE_SURFACE:-lawyerlab}"
+        VITE_TURNSTILE_SITEKEY: "${VITE_TURNSTILE_SITEKEY:?VITE_TURNSTILE_SITEKEY is required}"
+        NGINX_PORT: "7200"
+        NGINX_GATEWAY_UPSTREAM: "http://tool-parse-gateway:8080"
+    ports:
+      - "7200:7200"
+    networks:
+      - lawyerlab_frontend
+      - tool_parse_gateway
+    # nginx resolves proxy_pass hostnames at startup; both must exist first.
+    depends_on:
+      tool-parse-gateway:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - "CMD"
+        - "wget"
+        - "-q"
+        - "-O"
+        - "/dev/null"
+        - "http://127.0.0.1:7200/"
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  # Human Resources Lab SPA + nginx. Second frontend over the same tool-parse gateway and auth (no new API/auth).
+  # Shares the gateway's single Turnstile secret and the single Logto client, so it uses VITE_TURNSTILE_SITEKEY.
+  # Operator prerequisites before launch: DNS/Caddy for the HR hostname; that hostname on the same Turnstile widget (site key) whose secret the gateway holds; that hostname in AUTH_ORIGINS + TURNSTILE_ALLOWED_HOSTNAMES; HR callback URL on the shared Logto client.
+  hr-web:
+    build:
+      context: ../..
+      args:
+        VITE_SURFACE: "human-resources"
+        VITE_TURNSTILE_SITEKEY: "${VITE_TURNSTILE_SITEKEY:?VITE_TURNSTILE_SITEKEY is required}"
+        NGINX_PORT: "7220"
+        NGINX_GATEWAY_UPSTREAM: "http://tool-parse-gateway:8080"
+    ports:
+      - "127.0.0.1:7220:7220"
+    networks:
+      - lawyerlab_frontend
+      - tool_parse_gateway
+    depends_on:
+      tool-parse-gateway:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - "CMD"
+        - "wget"
+        - "-q"
+        - "-O"
+        - "/dev/null"
+        - "http://127.0.0.1:7220/"
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  # Signal Lawyers SPA + nginx on 127.0.0.1:7210. Same gateway/auth as web; only the surface and Turnstile site key differ.
+  signal-web:
+    build:
+      context: ../..
+      args:
+        VITE_SURFACE: "signal-lawyers"
+        VITE_TURNSTILE_SITEKEY: "${SIGNAL_TURNSTILE_SITEKEY:?SIGNAL_TURNSTILE_SITEKEY is required}"
+        NGINX_PORT: "7210"
+        NGINX_GATEWAY_UPSTREAM: "http://tool-parse-gateway:8080"
+    ports:
+      - "127.0.0.1:7210:7210"
+    networks:
+      - lawyerlab_frontend
+      - tool_parse_gateway
+    depends_on:
+      tool-parse-gateway:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - "CMD"
+        - "wget"
+        - "-q"
+        - "-O"
+        - "/dev/null"
+        - "http://127.0.0.1:7210/"
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  # LawyerLab OIDC/session auth. No host port. Bridge to gateway via lawyerlab_auth_bridge.
+  auth:
+    build:
+      context: ../../auth-server
+    environment:
+      AUTH_HOST: "0.0.0.0"
+      AUTH_PORT: "7300"
+      AUTH_BRIDGE_SECRET: "${AUTH_BRIDGE_SECRET:?AUTH_BRIDGE_SECRET is required}"
+      AUTH_ISSUER: "${AUTH_ISSUER:?AUTH_ISSUER is required}"
+      AUTH_CLIENT_ID: "${AUTH_CLIENT_ID:?AUTH_CLIENT_ID is required}"
+      AUTH_CLIENT_SECRET: "${AUTH_CLIENT_SECRET:?AUTH_CLIENT_SECRET is required}"
+      AUTH_SESSION_SECRET: "${AUTH_SESSION_SECRET:?AUTH_SESSION_SECRET is required}"
+      AUTH_ORIGINS: "${AUTH_ORIGINS:?AUTH_ORIGINS is required}"
+      AUTH_REQUIRED_ROLES: "${AUTH_REQUIRED_ROLES:-}"
+    networks:
+      - lawyerlab_frontend
+      - lawyerlab_auth_bridge
+    healthcheck:
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "require('http').get('http://127.0.0.1:7300/api/auth/health',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  # Waitlist signups (layer-forms envelope, local SQLite store, no CRM delivery yet). nginx: /api/waitlist -> here.
+  waitlist:
+    build:
+      context: ../../..
+      dockerfile: site-lawyerlab/waitlist-server/Dockerfile
+    environment:
+      WAITLIST_ORIGINS: "${AUTH_ORIGINS:?AUTH_ORIGINS is required}"
+      TWENTY_BASE_URL: "${TWENTY_BASE_URL:-}"
+      TWENTY_API_KEY: "${TWENTY_API_KEY:-}"
+    volumes:
+      - waitlist-data:/data
+    networks:
+      - lawyerlab_frontend
+    healthcheck:
+      test:
+        - "CMD"
+        - "wget"
+        - "-q"
+        - "-O"
+        - "/dev/null"
+        - "http://127.0.0.1:7400/api/waitlist/health"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Tool Parse public gateway: Turnstile, auth identity bridge, /v1 -> tool-parse API.
+  # Same image/command/mounts as ../../../tool-parse/deploy/compose.dev.yml `web` service.
+  tool-parse-gateway:
+    image: node:24-alpine
+    command: ["node", "/gateway/web-gateway.js"]
+    environment:
+      PORT: "8080"
+      WEB_ROOT: "/web"
+      API_ORIGIN: "http://tool-parse:3000"
+      PROXY_SECRET: "${PROXY_SECRET:?PROXY_SECRET is required}"
+      TOOL_PARSE_MEMBER_MAX_BYTES: "${TOOL_PARSE_MEMBER_MAX_BYTES:-}"
+      # LawyerLab policy: /hr/v1 requires an authenticated member; no guest or Turnstile path. Must be 1.
+      TOOL_PARSE_HR_REQUIRE_MEMBER: "1"
+      TURNSTILE_SECRET_FILE: "/run/secrets/turnstile_secret"
+      TURNSTILE_ALLOWED_HOSTNAMES: "${TURNSTILE_ALLOWED_HOSTNAMES:?TURNSTILE_ALLOWED_HOSTNAMES is required}"
+      TURNSTILE_ACTION: "${TURNSTILE_ACTION:-tool_parse_upload}"
+      TOOL_PARSE_MOCK: "${TOOL_PARSE_MOCK:-}"
+      VITE_LOGIN_URL: "${VITE_LOGIN_URL:-}"
+      VITE_SIGNUP_URL: "${VITE_SIGNUP_URL:-}"
+      AUTH_IDENTITY_URL: "http://auth:7300/internal/auth/identity"
+      AUTH_BRIDGE_SECRET_FILE: "/run/secrets/auth_bridge_secret"
+    secrets:
+      - source: turnstile_secret
+        target: turnstile_secret
+      - source: auth_bridge_secret
+        target: auth_bridge_secret
+    volumes:
+      - ../../../tool-parse/web/dist:/web:ro
+      - ../../../tool-parse/deploy/web-gateway.js:/gateway/web-gateway.js:ro
+    ports:
+      - "127.0.0.1:7100:8080"
+    networks:
+      tool_parse_gateway:
+        aliases:
+          - tool-parse-gateway
+      lawyerlab_auth_bridge: {}
+      tool_parse_internal: {}
+    # Crashes on missing secrets; healthcheck makes that visible to `up --wait`.
+    healthcheck:
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "require('http').get('http://127.0.0.1:8080/v1/health',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # Tool Parse API. Port 3000 internal only; no host publish.
+  tool-parse:
+    build:
+      context: ../../../tool-parse
+      dockerfile: deploy/Dockerfile
+    expose:
+      - "3000"
+    environment:
+      PROXY_SECRET: "${PROXY_SECRET:?PROXY_SECRET is required}"
+      PRESIDIO_ANALYZER_URL: "${PRESIDIO_ANALYZER_URL:-http://presidio:3000}"
+      TOOL_PARSE_DB_PATH: "/data/tool-parse.db"
+      TOOL_PARSE_STORAGE_DIR: "/data/blobs"
+      TOOL_PARSE_OCR_URL: "http://tool-parse-proxy:8080/v1/chat/completions"
+      # Onboarding generation stays off (503 llm_not_configured) until TOOL_PARSE_ONBOARD_MODEL is set; gate: site-lawyerlab#54.
+      TOOL_PARSE_ONBOARD_LLM_URL: "http://tool-parse-proxy:8080/onboard/v1/chat/completions"
+      TOOL_PARSE_ONBOARD_MODEL: "${TOOL_PARSE_ONBOARD_MODEL:-}"
+      # Job-description generation stays off (503 llm_not_configured) until TOOL_PARSE_HIRING_MODEL is set.
+      TOOL_PARSE_HIRING_LLM_URL: "http://tool-parse-proxy:8080/hiring/v1/chat/completions"
+      TOOL_PARSE_HIRING_MODEL: "${TOOL_PARSE_HIRING_MODEL:-}"
+      TOOL_PARSE_COMPENSATION_MODEL: "${TOOL_PARSE_COMPENSATION_MODEL:-}"
+      # Agreement review remains disabled in code pending Category 1 coverage and provider review.
+      TOOL_PARSE_AGREEMENT_LLM_URL: "http://tool-parse-proxy:8080/agreement/v1/chat/completions"
+      TOOL_PARSE_AGREEMENT_MODEL: "${TOOL_PARSE_AGREEMENT_MODEL:-}"
+      TOOL_PARSE_HR_V1_ENABLED: "${TOOL_PARSE_HR_V1_ENABLED:-1}"
+      TOOL_PARSE_HR_DAILY_GENERATIONS: "${TOOL_PARSE_HR_DAILY_GENERATIONS:-500}"
+      TOOL_PARSE_MODE: "${TOOL_PARSE_MODE:-}"
+      TOOL_PARSE_MOCK: "${TOOL_PARSE_MOCK:-}"
+      TOOL_PARSE_HR_REVIEW_MODE: "${TOOL_PARSE_HR_REVIEW_MODE:-}"
+      TOOL_PARSE_MEMBER_MAX_BYTES: "${TOOL_PARSE_MEMBER_MAX_BYTES:-}"
+      TOOL_PARSE_FREE_MAX_BYTES: "${TOOL_PARSE_FREE_MAX_BYTES:-}"
+      TOOL_PARSE_DOCX_MAX_UNCOMPRESSED_BYTES: "${TOOL_PARSE_DOCX_MAX_UNCOMPRESSED_BYTES:-}"
+      TOOL_PARSE_JOB_TIMEOUT_MS: "${TOOL_PARSE_JOB_TIMEOUT_MS:-}"
+      TOOL_PARSE_ANON_GLOBAL_DAILY: "${TOOL_PARSE_ANON_GLOBAL_DAILY:-500}"
+      TOOL_PARSE_MEMBER_DAILY: "${TOOL_PARSE_MEMBER_DAILY:-1000}"
+      TOOL_PARSE_RETENTION_MS: "${TOOL_PARSE_RETENTION_MS:-}"
+      TOOL_PARSE_FREE_RETENTION_MS: "${TOOL_PARSE_FREE_RETENTION_MS:-}"
+      TOOL_PARSE_WORKFLOW_DIR: "/app/workflows"
+      # bwrap cannot run with caps dropped; first-party plugin, container is the boundary.
+      TOOL_PARSE_WORKFLOW_ALLOW_UNSANDBOXED: "1"
+      TOOL_PARSE_WORKFLOW_ALLOWLIST: "docalias,contract-review"
+      TOOL_PARSE_WORKFLOW_SENSITIVE_ENABLED: "1"
+    volumes:
+      - tool-parse-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev
+    security_opt:
+      - no-new-privileges:true
+    # Entrypoint chowns /data and su-exec's to app; needs these three caps back.
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+    pids_limit: 128
+    mem_limit: 1g
+    cpus: 1.0
+    networks:
+      tool_parse_internal: {}
+      lawyerlab_internal: {}
+      presidio: {}
+    depends_on:
+      tool-parse-proxy:
+        condition: service_healthy
+    # Healthy only if the API answers AND the Presidio analyzer /health is reachable (same URL redact.py uses).
+    healthcheck:
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "(async()=>{const s=AbortSignal.timeout(4000);for(const u of ['http://127.0.0.1:3000/v1/health',process.env.PRESIDIO_ANALYZER_URL+'/health']){if((await fetch(u,{signal:s})).status!==200)throw 0}})().then(()=>process.exit(0),()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # Fixed-upstream OCR egress proxy. Only egress path for Tool Parse OCR.
+  tool-parse-proxy:
+    build:
+      context: ../../../tool-parse/deploy/ocr-egress
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 64
+    mem_limit: 256m
+    cpus: 0.5
+    user: "1000:1000"
+    # Onboarding LLM provider (cloud|openrouter|local) and optional URL overrides. Keys are file secrets
+    # for the /onboard/v1/chat/completions route only; tool-parse never receives them. Local needs no key.
+    environment:
+      ONBOARD_LLM_PROVIDER: "${ONBOARD_LLM_PROVIDER:-cloud}"
+      HIRING_LLM_PROVIDER: "${HIRING_LLM_PROVIDER:-cloud}"
+      CLOUD_LLM_URL: "${CLOUD_LLM_URL:-}"
+      OPENROUTER_URL: "${OPENROUTER_URL:-}"
+      LOCAL_LLM_URL: "${LOCAL_LLM_URL:-}"
+    secrets:
+      - source: cloud_llm_key
+        target: cloud_llm_key
+      - source: openrouter_key
+        target: openrouter_key
+      - source: hiring_llm_key
+        target: hiring_llm_key
+    networks:
+      lawyerlab_internal: {}
+      lawyerlab_egress: {}
+    healthcheck:
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "require('http').get('http://127.0.0.1:8080/healthz',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+secrets:
+  turnstile_secret:
+    file: "${TURNSTILE_SECRET_SOURCE_FILE:-/etc/tool-parse/secrets/turnstile_secret}"
+  auth_bridge_secret:
+    file: "${AUTH_BRIDGE_SECRET_SOURCE_FILE:-/etc/tool-parse/secrets/auth_bridge_secret}"
+  # Unselected providers default to /dev/null (empty); up.sh requires the selected one to be non-empty.
+  cloud_llm_key:
+    file: "${CLOUD_LLM_KEY_SOURCE_FILE:-/dev/null}"
+  openrouter_key:
+    file: "${OPENROUTER_KEY_SOURCE_FILE:-/dev/null}"
+  hiring_llm_key:
+    file: "${HIRING_LLM_KEY_SOURCE_FILE:-/dev/null}"
+
+volumes:
+  tool-parse-data:
+  waitlist-data:
+
+networks:
+  # Browser ingress to web + auth. Bridge (auth needs outbound to the OIDC issuer).
+  lawyerlab_frontend:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/20
+          gateway: 172.20.0.1
+  # Web <-> gateway. Bridge: gateway needs outbound for Turnstile siteverify.
+  tool_parse_gateway: {}
+  # Gateway <-> auth only. No default route.
+  lawyerlab_auth_bridge:
+    internal: true
+  # Gateway <-> tool-parse API only. No default route.
+  tool_parse_internal:
+    internal: true
+  # tool-parse <-> tool-parse-proxy only. No default route.
+  lawyerlab_internal:
+    internal: true
+  # Proxy-only outbound path to the OCR upstream.
+  lawyerlab_egress:
+    driver: bridge
+  # Presidio analyzer network, created outside this project. Must be --internal; up.sh verifies.
+  presidio:
+    external: true
+    name: "${PRESIDIO_NETWORK:?PRESIDIO_NETWORK is required (existing internal Presidio network)}"
