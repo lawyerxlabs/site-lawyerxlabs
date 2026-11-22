@@ -1,7 +1,14 @@
 import { Link } from "react-router-dom"
 
 function CompanyShell({ children }: { children: React.ReactNode }) {
-  return <div className="app-shell"><header className="mobile-bar"><Link className="mobile-brand" to="/"><strong>LawyerLabs</strong></Link><nav><Link to="/products/">Products</Link> · <Link to="/playground/">Playground</Link></nav></header><main className="main-content">{children}</main><footer>LawyerLabs</footer></div>
+  return <div className="app-shell">
+    <header className="site-header">
+      <Link className="brand" to="/" aria-label="LawyerLabs home"><strong>LawyerLabs</strong></Link>
+      <nav className="site-nav" aria-label="Primary"><Link to="/products/">Products</Link><Link to="/playground/">Playground</Link></nav>
+    </header>
+    <main className="landing-main">{children}</main>
+    <footer className="landing-footer"><p>LawyerLabs helps bring relevant information into view before people decide.</p><nav className="site-footer-nav" aria-label="Footer"><Link to="/products/">Products</Link><Link to="/playground/">Playground</Link></nav></footer>
+  </div>
 }
 
 export function CompanyHome() {

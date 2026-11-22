@@ -46,6 +46,11 @@ describe("surface routes", () => {
     await waitFor(() => expect(document.querySelector("h1")?.textContent).toBe("Technology that supports better decisions"))
     expect(document.body.textContent).toContain("LawyerLabs gives professionals, educators and organizations access to AI applications and tools that help bring relevant information into view before they decide.")
     expect(document.querySelector("output")?.textContent).toBe("/")
+    expect(document.querySelector("header")).not.toBeNull()
+    expect(document.querySelector("main")).not.toBeNull()
+    expect(document.querySelector("footer")).not.toBeNull()
+    expect(document.querySelector('nav[aria-label="Primary"] a[href="/products/"]')?.textContent).toBe("Products")
+    expect(document.querySelector('nav[aria-label="Primary"] a[href="/playground/"]')?.textContent).toBe("Playground")
   })
 
   it.each([
