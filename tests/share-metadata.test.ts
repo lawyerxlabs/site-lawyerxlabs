@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { applySurfaceMeta } from "../vite.config"
 
 const pages = [
-  { file: "index.html", title: "LawyerLab — Practical AI workflow exploration for lawyers", canonical: "https://lawyerlab.ca/", image: "share-lawyerlab.png" },
+  { file: "index.html", title: "LawyerLabs — AI tools for better decisions", canonical: "https://lawyerxlabs.com/", image: "share-lawyerlab.png" },
   { file: "playground/index.html", title: "Playground — LawyerLab", canonical: "https://lawyerlab.ca/playground/", image: "share-playground.png" },
 ]
 
@@ -12,7 +12,7 @@ describe("share metadata", () => {
     const html = readFileSync(file, "utf8")
     expect(html).toContain(`<title>${title}</title>`)
     expect(html).toContain(`<link rel="canonical" href="${canonical}" />`)
-    expect(html).toContain(`https://lawyerlab.ca/${image}`)
+    expect(html).toContain(`https://${file === "index.html" ? "lawyerxlabs.com" : "lawyerlab.ca"}/${image}`)
     expect(html).toContain('content="1200"')
     expect(html).toContain('content="630"')
     const png = readFileSync(`public/${image}`)
@@ -21,7 +21,7 @@ describe("share metadata", () => {
     expect(png.readUInt32BE(20)).toBe(630)
   })
 
-  it("leaves LawyerLab head metadata untouched by default", () => {
+  it("keeps LawyerLabs head metadata and routes default metadata untouched", () => {
     const html = readFileSync("index.html", "utf8")
     expect(applySurfaceMeta(html, "lawyerlab")).toBe(html)
     expect(applySurfaceMeta(html, "")).toBe(html)

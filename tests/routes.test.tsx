@@ -39,12 +39,25 @@ describe("surface routes", () => {
     }
   })
 
-  it("serves the landing page at / for lawyerlab", async () => {
+  it("serves LawyerLabs homepage at /", async () => {
     state.id = "lawyerlab"
     window.history.replaceState({}, "", "/")
     render(<BrowserRouter><AppRoutes /><Location /></BrowserRouter>)
-    await waitFor(() => expect(document.querySelector("#landing-title")).not.toBeNull())
+    await waitFor(() => expect(document.querySelector("h1")?.textContent).toBe("Technology that supports better decisions"))
+    expect(document.body.textContent).toContain("LawyerLabs gives professionals, educators and organizations access to AI applications and tools that help bring relevant information into view before they decide.")
     expect(document.querySelector("output")?.textContent).toBe("/")
+  })
+
+  it.each([
+    ["/products/", "Products", "LawyerLab", "Launch MCP"],
+    ["/mcp/", "Launch MCP", "A landing page for MCP tools.", "planned"],
+  ])("serves umbrella route %s", async (path, heading, content, status) => {
+    window.history.replaceState({}, "", path)
+    render(<BrowserRouter><AppRoutes /><Location /></BrowserRouter>)
+    await waitFor(() => expect(document.querySelector("h1")?.textContent).toBe(heading))
+    expect(document.body.textContent).toContain(content)
+    expect(document.body.textContent).toContain(status)
+    expect(document.querySelector("output")?.textContent).toBe(path)
   })
 
   it("redirects / to the playground for signal-lawyers", async () => {

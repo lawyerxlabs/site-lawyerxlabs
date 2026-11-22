@@ -11,6 +11,7 @@ import { AccessPending, Login } from "./pages/Auth"
 import { surface } from "./surface"
 import { TierProvider } from "./lib/useTier"
 import type { WorkflowId } from "./lib/workflows"
+import { CompanyHome, McpLanding, Products } from "./pages/Umbrella"
 
 function Mvp() {
   return <App />
@@ -19,7 +20,9 @@ function Mvp() {
 export function AppRoutes() {
   // One auth owner for the whole route tree, so logout gates every mounted flow at once.
   return <TierProvider><Routes>
-    <Route path="/" element={surface.id === "lawyerlab" ? <Landing /> : <Navigate to={surface.home} replace />} />
+    <Route path="/" element={surface.id === "lawyerlab" ? <CompanyHome /> : <Navigate to={surface.home} replace />} />
+    <Route path="/products/" element={<Products />} />
+    <Route path="/mcp/" element={<McpLanding />} />
     {surface.id === "lawyerlab" && <>
       <Route path="/about/" element={<PublicPage page="about" />} />
       <Route path="/example/" element={<PublicPage page="example" />} />

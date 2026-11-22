@@ -17,7 +17,9 @@ export function applySurfaceMeta(html: string, surface: string) {
     .replace(/(<meta (?:property="og:title"|name="twitter:title") content=")[^"]*/g, `$1${SIGNAL_TITLE}`)
     .replace(/(<meta (?:property="og:image:alt"|name="twitter:image:alt") content=")[^"]*/g, `$1${SIGNAL_ALT}`)
     .replace(/share-(?:lawyerlab|playground)\.png/g, "share-signal.png")
+    .replaceAll("https://lawyerxlabs.com/", "https://lab.signallawyers.ca/")
     .replaceAll("https://lawyerlab.ca/", "https://lab.signallawyers.ca/")
+    .replace(/<meta property="og:site_name" content="[^"]*" \/>/, '<meta property="og:site_name" content="Signal Lawyers" />')
     .replaceAll("LawyerLab", "Signal Lawyers")
 }
 
