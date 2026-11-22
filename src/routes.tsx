@@ -22,7 +22,8 @@ export function AppRoutes() {
   return <TierProvider><Routes>
     <Route path="/" element={surface.id === "lawyerlab" ? <CompanyHome /> : <Navigate to={surface.home} replace />} />
     <Route path="/products/" element={<Products />} />
-    <Route path="/mcp/" element={<McpLanding />} />
+    <Route path="/products/mcp/" element={<McpLanding />} />
+    <Route path="/mcp/" element={<Navigate to="/products/mcp/" replace />} />
     {surface.id === "lawyerlab" && <>
       <Route path="/about/" element={<PublicPage page="about" />} />
       <Route path="/example/" element={<PublicPage page="example" />} />

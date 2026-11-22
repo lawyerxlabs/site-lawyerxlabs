@@ -50,7 +50,7 @@ describe("surface routes", () => {
 
   it.each([
     ["/products/", "Products", "LawyerLab", "Launch MCP"],
-    ["/mcp/", "Launch MCP", "A landing page for MCP tools.", "planned"],
+    ["/products/mcp/", "Launch MCP", "connect legal workflows", "unknown"],
   ])("serves umbrella route %s", async (path, heading, content, status) => {
     window.history.replaceState({}, "", path)
     render(<BrowserRouter><AppRoutes /><Location /></BrowserRouter>)
@@ -58,6 +58,13 @@ describe("surface routes", () => {
     expect(document.body.textContent).toContain(content)
     expect(document.body.textContent).toContain(status)
     expect(document.querySelector("output")?.textContent).toBe(path)
+  })
+
+  it("redirects legacy /mcp/ to the product page", async () => {
+    state.id = "lawyerlab"
+    window.history.replaceState({}, "", "/mcp/")
+    render(<BrowserRouter><AppRoutes /><Location /></BrowserRouter>)
+    await waitFor(() => expect(document.querySelector("output")?.textContent).toBe("/products/mcp/"))
   })
 
   it("redirects / to the playground for signal-lawyers", async () => {
